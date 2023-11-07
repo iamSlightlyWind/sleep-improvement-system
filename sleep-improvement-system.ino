@@ -15,6 +15,9 @@ String minute[] = {"00", "00", "00"};
 
 int current = 0, cycle = 0;
 
+String btdata;
+String serialdata;
+
 void setup()
 {
     pinMode(buttonNext, INPUT);
@@ -29,18 +32,11 @@ void setup()
 
 void loop()
 {
-    // chat between bluetooth and serial
-    if (bluetooth.available())
+    if (bluetooth.available() != 0)
     {
-        char receivedChar = bluetooth.read();
-        if (receivedChar != '.')
-        {
-            Serial.print(receivedChar);
-        }
-        else
-        {
-            Serial.println();
-        }
+        btdata = bluetooth.readString();
+        Serial.println(btdata);
+        Serial.println("");
     }
 
     process();
@@ -59,7 +55,7 @@ void process()
     delay(200);
 }
 
-unsigned long previousMillis = 0; 
+unsigned long previousMillis = 0;
 
 void updateTime()
 {
@@ -150,6 +146,12 @@ void getCycle()
     minute[2] = String(toAlarmTime % 60);
 
     cycle = toAlarmTime / 90;
+
+    // if minutes left < 30, send bluetooth signal
+    if (toAlarmTime < 30)
+    {
+        Serial.println("1");
+    }
 }
 
 void formatTime()
@@ -171,39 +173,23 @@ void formatTime()
     }
 }
 
-bool isBlinkOn = false;
 long lastBlink = 0;
-long startBlink = 0;
-long blinkedFor = 0;
 int startLocation[] = {0, 3, 6, 9};
 
-void blink()
-{
-    if (current < 4)
-    {
-        int currentTime = millis();
-        if (currentTime - lastBlink > 1000)
-        {
-            isBlinkOn = true;
-            blinkedFor = 0;
-            startBlink = millis();
-            lastBlink = millis() + 5000000; // dummy value so it doesnt get triggered again
-        }
+bool isBlinking = false;
+unsigned long lastBlinkTime = 0;
+const unsigned long blinkDuration = 1000; // blink duration in milliseconds
 
-        if (isBlinkOn)
-        {
-            blinkedFor = millis() - startBlink;
-            if (blinkedFor < 300)
-            {
-                lcd.setCursor(startLocation[current], 1);
-                lcd.print("  ");
-            }
-            else
-            {
-                lastBlink = millis();
-                isBlinkOn = false;
-            }
-        }
+void blink() {
+    unsigned long currentTime = millis();
+    if (currentTime - lastBlinkTime > blinkDuration) {
+        isBlinking = !isBlinking; // toggle blink status
+        lastBlinkTime = currentTime;
+    }
+
+    if (isBlinking && current < 4) {
+        lcd.setCursor(startLocation[current], 1);
+        lcd.print("  ");
     }
 }
 
