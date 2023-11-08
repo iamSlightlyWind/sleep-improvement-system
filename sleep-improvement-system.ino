@@ -183,6 +183,8 @@ void alarmControl() {
                 } else if (cycle == 0)
                     wp = false;
                 actionSet = true;
+
+                Serial.println("0"); //send do not disturb
             }
             delay(500);
         }
