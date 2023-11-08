@@ -10,7 +10,7 @@ SoftwareSerial bluetooth(0, 1);
 int buttonNext = 10, buttonPrev = 9;
 int potentiometer = A0;
 
-String hour[] = {"00", "00", "00"}; // 0 for current, 1 for alarm, 2 for time from current to alarm
+String hour[] = {"00", "00"}; // 0 for current, 1 for alarm, 2 for time from current to alarm
 String minute[] = {"00", "00", "00"};
 
 int current = 0, cycle = 0;
@@ -49,64 +49,54 @@ void process()
     getCycle();
     updateTime();
     formatTime();
+    alarmControl();
 
     print();
 
     delay(200);
 }
 
+bool alarmSet = false;
+
+void alarmControl()
+{
+    if (current == 4)
+    {
+        if (!alarmSet)
+        {
+            alarmSet = true;
+            // toAlarmMin = hour[2].toInt() * 60 + minute[2].toInt();
+        }
+    }
+}
+
 unsigned long previousMillis = 0;
 
 void updateTime()
 {
-    unsigned long currentMillis = millis();
-    if (currentMillis - previousMillis >= 60000)
+    if (millis() - previousMillis >= 60000)
     {
-        previousMillis = currentMillis;
-
-        int minuteValue = minute[0].toInt();
-        minuteValue++;
-        if (minuteValue > 59)
-        {
-            minuteValue = 0;
-            int hourValue = hour[0].toInt();
-            hourValue++;
-            if (hourValue > 23)
-            {
-                hourValue = 0;
-            }
-            hour[0] = String(hourValue);
-        }
+        previousMillis = millis();
+        int minuteValue = (minute[0].toInt() + 1) % 60;
+        if (minuteValue == 0) hour[0] = String((hour[0].toInt() + 1) % 24);
         minute[0] = String(minuteValue);
     }
 }
 
 void getInput()
 {
-    if (digitalRead(buttonNext) == LOW)
-    {
-        if (current < 4)
-        {
-            current++;
-            delay(50);
-        }
-    }
-
-    if (digitalRead(buttonPrev) == LOW)
-    {
-        if (current > 0)
-        {
-            current--;
-            delay(50);
-        }
-    }
+    if (digitalRead(buttonNext) == LOW && current < 4) current++;
+    if (digitalRead(buttonPrev) == LOW && current > 0) current--;
+    delay(50);
 }
 
-int porentiometerMax = 970;
-int porentiometerMin = 60;
+int porentiometerMax = 965;
+int porentiometerMin = 180;
 
 void getTime()
 {
+    Serial.println(String(analogRead(potentiometer)));
+
     switch (current)
     {
     case 0:
@@ -130,77 +120,50 @@ void getCycle()
 {
     int currentTime = hour[0].toInt() * 60 + minute[0].toInt();
     int alarmTime = hour[1].toInt() * 60 + minute[1].toInt();
-    int toAlarmTime = 0;
+    int toAlarmTime = currentTime > alarmTime ? 1440 - currentTime + alarmTime : alarmTime - currentTime;
 
-    if (currentTime > alarmTime)
-    {
-        toAlarmTime = 1440 - currentTime + alarmTime;
-    }
-
-    if (currentTime < alarmTime)
-    {
-        toAlarmTime = alarmTime - currentTime;
-    }
-
-    hour[2] = String(toAlarmTime / 60);
-    minute[2] = String(toAlarmTime % 60);
-
+    minute[2] = String(toAlarmTime);
     cycle = toAlarmTime / 90;
-
-    // if minutes left < 30, send bluetooth signal
-    if (toAlarmTime < 30)
-    {
-        Serial.println("1");
-    }
 }
 
 void formatTime()
 {
     for (int i = 0; i <= 2; i++)
     {
-        if (hour[i].length() < 2)
-        {
-            hour[i] = "0" + String(hour[i]);
-        }
-    }
-
-    for (int i = 0; i <= 2; i++)
-    {
-        if (minute[i].length() < 2)
-        {
-            minute[i] = "0" + String(minute[i]);
-        }
+        hour[i] = hour[i].length() < 2 ? "0" + String(hour[i]) : hour[i];
+        minute[i] = minute[i].length() < 2 ? "0" + String(minute[i]) : minute[i];
     }
 }
 
 long lastBlink = 0;
-int startLocation[] = {0, 3, 6, 9};
+int startLocation[] = {2, 5, 10, 13};
 
 bool isBlinking = false;
 unsigned long lastBlinkTime = 0;
 const unsigned long blinkDuration = 1000; // blink duration in milliseconds
 
-void blink() {
+void blink()
+{
     unsigned long currentTime = millis();
-    if (currentTime - lastBlinkTime > blinkDuration) {
+    if (currentTime - lastBlinkTime > blinkDuration)
+    {
         isBlinking = !isBlinking; // toggle blink status
         lastBlinkTime = currentTime;
     }
 
-    if (isBlinking && current < 4) {
-        lcd.setCursor(startLocation[current], 1);
+    if (isBlinking && current < 4)
+    {
+        lcd.setCursor(startLocation[current], 0);
         lcd.print("  ");
     }
 }
 
 void print()
 {
+    String line1 = "C:" + String(hour[0]) + ":" + String(minute[0]) + " A:" + String(hour[1]) + ":" + String(minute[1]);
+    String line2 = "U:" + String(minute[2]);
+
     lcd.clear();
-
-    String line1 = String(current) + " " + String(analogRead(potentiometer)) + " " + String(hour[2]) + ":" + String(minute[2]) + " " + String(cycle);
-
-    String line2 = String(hour[0]) + ":" + String(minute[0]) + " " + String(hour[1]) + ":" + String(minute[1]);
-
     lcd.setCursor(0, 0);
     lcd.print(line1);
     lcd.setCursor(0, 1);
