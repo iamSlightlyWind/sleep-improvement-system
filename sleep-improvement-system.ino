@@ -85,7 +85,7 @@ void getInput() {
 }
 
 void getTime() {
-    //Serial.println(String(analogRead(potentiometer)));
+    // Serial.println(String(analogRead(potentiometer)));
 
     switch (current) {
         case 0:
@@ -184,7 +184,7 @@ void alarmControl() {
                     wp = false;
                 actionSet = true;
 
-                Serial.println("0"); //send do not disturb
+                Serial.println("0");  // send do not disturb
             }
             delay(500);
         }
@@ -227,8 +227,10 @@ int getWpChoice() {
     if (choiceMade == 2) {
         while (choiceMade == 2) {
             if (digitalRead(buttonNext) == LOW) return minute[2].toInt() - 30;
-            if (digitalRead(buttonPrev) == LOW) current = 3;
-            choiceMade = 3;
+            if (digitalRead(buttonPrev) == LOW) {
+                current = 3;
+                choiceMade = 3;
+            }
             delay(50);
         }
     }
